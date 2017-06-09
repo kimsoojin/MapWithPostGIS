@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Leaflet Map</title>
+    <meta charset="utf-8" />
+    <link 
+        rel="stylesheet" 
+        href="http://cdn.leafletjs.com/leaflet-0.7/leaflet.css"
+    />
+    <link rel="stylesheet" href="node_modules/leaflet-zoombox/L.Control.ZoomBox.css" />
+</head>
+<body>
+    <div id="map" style="width: 600px; height: 400px"></div>
+
+    <script
+        src="http://cdn.leafletjs.com/leaflet-0.7/leaflet.js">
+    </script>
+    <script src="node_modules/leaflet-zoombox/L.Control.ZoomBox.js"></script>
+    <script>
+        var map = L.map('map').setView([-41.2858, 174.78682], 14);
+        map.crs = L.CRS.Earth;
+        map.touchZoom.disable();
+        map.boxZoom.disable();
+        mapLink = 
+            '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+        L.tileLayer(
+            'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; ' + mapLink + ' Contributors',
+            //minZoom: 15//,
+            maxZoom: 18,
+            }).addTo(map);
+
+        var control = L.control.zoomBox({
+            modal: true//,  // If false (default), it deactivates after each use.  
+                          // If true, zoomBox control stays active until you click on the control to deactivate.
+            // position: "topleft",                  
+            // className: "customClass"  // Class to use to provide icon instead of Font Awesome
+            // title: "My custom title" // a custom title
+        });
+        map.addControl(control);
+    </script>
+</body>
+</html>
