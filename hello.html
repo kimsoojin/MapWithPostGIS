@@ -7,20 +7,24 @@
         rel="stylesheet" 
         href="http://cdn.leafletjs.com/leaflet-0.7/leaflet.css"
     />
-    <link rel="stylesheet" href="node_modules/leaflet-zoombox/L.Control.ZoomBox.css" />
+    <link rel="stylesheet" href="/node_modules/leaflet-zoombox/L.Control.ZoomBox.css" />
 </head>
 <body>
     <div id="map" style="width: 600px; height: 400px"></div>
 
+    <input type="checkbox" id="route" onchange ="light('road',this.checked)">route
+
+    <input type="checkbox" id="building"  onchange ="light('building',this.checked)">building
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
     <script
         src="http://cdn.leafletjs.com/leaflet-0.7/leaflet.js">
     </script>
-    <script src="node_modules/leaflet-zoombox/L.Control.ZoomBox.js"></script>
+    <script src="/node_modules/leaflet-zoombox/L.Control.ZoomBox.js"></script>
     <script>
-        var map = L.map('map').setView([-41.2858, 174.78682], 14);
-        map.crs = L.CRS.Earth;
+        var map = L.map('map').setView([35.874585, 128.62174], 14);
+        map.crs = L.CRS.EPSG3857;
         map.touchZoom.disable();
-        map.boxZoom.disable();
+        //map.boxZoom.disable();
         mapLink = 
             '<a href="http://openstreetmap.org">OpenStreetMap</a>';
         L.tileLayer(
@@ -38,6 +42,40 @@
             // title: "My custom title" // a custom title
         });
         map.addControl(control);
+        $.get("roaddata", drawdata, "json");
+        $.get("buildingdata", drawdata, "json");
+        function drawdata(data) {
+          for(var i = 0;i < data.length;i++) {
+            var id = data[i].id;
+            var featuretype = data[i].type;
+            var obj = eval("("+data[i].st_asgeojson+")");
+            var type = obj.type;
+            if(type == "LineString") {
+                var polyline = L.polyline(obj.coordinates, {color: 'red'}).addTo(map);
+                features[featuretype][id] = polyline;
+            }
+            else if(type == "Polygon") {
+                var polygon = L.polygon(obj.coordinates, {color: 'red'}).addTo(map);
+                features[featuretype][id] = polygon;
+            }
+            else if(type == "Point") {
+                var point = L.circle(obj.coordinates, {color: 'red'}).addTo(map);
+            }
+          }
+        }
+        function light(type, check){
+            if(check){
+                var f = features[type];
+                for(var i in f){
+                    f[i].setStyle({color: '#FFFC00'});
+                }
+            }else {
+                var f = features[type];
+                for(var i in f){
+                    f[i].setStyle({color: '#FF0000'});
+                }
+            }
+        }
     </script>
 </body>
 </html>
