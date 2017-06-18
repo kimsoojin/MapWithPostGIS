@@ -23,6 +23,10 @@ var count = 0;
 //app.set('view engine', 'ejs');  //tell Express we're using EJS
 
 //app.get('/', function (req, res) {
+
+function building_parser(){}
+function road_parser(){}
+
 (function() {
   var pg = require("pg");
   //var conString = "postgres://postgres:postgres@127.0.0.1:5433/test";
@@ -38,6 +42,8 @@ var count = 0;
     //console.log(util.inspect(result['osm']['node'],false,null));
     var node_list = result['osm']['node'];
     var way_list = result['osm']['way'];
+    var building_map = {};
+    var road_map = {};
     for (var i = 0; i < node_list.length; i++) {
       //console.log(util.inspect(node_list[i],false,null));
 
@@ -47,6 +53,7 @@ var count = 0;
         var name_accept = false;
         var b_type;
         var node = node_list[i];
+
         for (var j = 0; j < node_list[i]['tag'].length; j++) {
           //console.log(util.inspect(node_list[i]['tag'][j]['$'], false, null));
 
@@ -62,6 +69,14 @@ var count = 0;
           }
         }
         if (flag_accept == true && name_accept == true) {
+
+          if(building_map.hasOwnProperty(b_type)){
+            var v = building_map[b_type];
+            building_map[b_type] = v + 1;
+          }
+          else{
+            building_map[b_type] = 1;
+          }
           var id = node['$']['id'];
           var lat = node['$']['lat'];
           var lon = node['$']['lon'];
@@ -137,6 +152,13 @@ var count = 0;
           */
         }
         if (flag_accept == true && name_accept == true) {
+          if(road_map.hasOwnProperty(b_type)){
+            var v = road_map[b_type];
+            road_map[b_type] = v + 1;
+          }
+          else{
+            road_map[b_type] = 1;
+          }
           var id = node['$']['id'];
           var lat = node['$']['lat'];
           var lon = node['$']['lon'];
@@ -173,6 +195,8 @@ var count = 0;
 
 
     }
+    console.log(JSON.stringify(building_map));
+    console.log(JSON.stringify(road_map));
   });
 
 })();
