@@ -1,4 +1,4 @@
-
+/*qeury to postgis */
 var restify     = require('restify'),
     fs          = require('fs'),
     pg          = require('pg-query')
