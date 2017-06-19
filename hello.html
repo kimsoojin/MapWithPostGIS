@@ -12,9 +12,13 @@
 <body>
     <div id="map" style="width: 600px; height: 400px"></div>
 
-    <input type="checkbox" id="route" onchange ="light('road',this.checked)">route
+    <input type="checkbox" id="building" onchange ="query('building',this.checked)">building
 
-    <input type="checkbox" id="building"  onchange ="light('building',this.checked)">building
+    <input type="checkbox" id="hospital"  onchange ="query('hospital',this.checked)">hospital
+    <input type="checkbox" id="school"  onchange ="query('school',this.checked)">school
+    <input type="checkbox" id="fuel"  onchange ="query('fuel',this.checked)">fuel
+    <input type="checkbox" id="townhall"  onchange ="query('townhall',this.checked)">townhall
+    <button onclick="light()">type query</button>
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
     <script
         src="http://cdn.leafletjs.com/leaflet-0.7/leaflet.js">
@@ -23,7 +27,7 @@
     <script>
         var map = L.map('map').setView([35.874585, 128.62174], 14);
 
-        var myRenderer = L.canvas({ padding: 0.5 });
+        //var myRenderer = L.canvas({ padding: 0.5 });
         map.crs = L.CRS.EPSG3857;
         map.touchZoom.disable();
         //map.boxZoom.disable();
@@ -47,36 +51,51 @@
         $.get("roaddata", drawdata, "json");
         $.get("buildingdata", drawdata, "json");
         function drawdata(data) {
+            //console.log(data);
           for(var i = 0;i < data.length;i++) {
             var id = data[i].id;
-            var featuretype = data[i].type;
             var obj = eval("("+data[i].st_asgeojson+")");
+            //console.log(obj.coordinates);
             var type = obj.type;
             if(type == "LineString") {
-                var polyline = L.polyline(obj.coordinates, {color: 'red',renderer: myRenderer}).addTo(map);
-                features[featuretype][id] = polyline;
+                var polyline = L.polyline(obj.coordinates, {color: 'red'}).addTo(map);
+                features[id] = polyline;
             }
             else if(type == "Polygon") {
-                var polygon = L.polygon(obj.coordinates, {color: 'red',renderer: myRenderer}).addTo(map);
-                features[featuretype][id] = polygon;
+                var polygon = L.polygon(obj.coordinates, {color: 'red'}).addTo(map);
+                features[id] = polygon;
             }
             else if(type == "Point") {
-                var point = L.circle(obj.coordinates, {color: 'red',renderer: myRenderer}).addTo(map);
+                var point = L.circle(obj.coordinates, {color: 'red',radius: 2}).addTo(map);
             }
           }
         }
-        function light(type, check){
-            if(check){
-                var f = features[type];
-                for(var i in f){
-                    f[i].setStyle({color: '#FFFC00'});
-                }
-            }else {
-                var f = features[type];
-                for(var i in f){
-                    f[i].setStyle({color: '#FF0000'});
+function pinTheMap(data){
+            //console.log(data);
+            for(var i = 0;i < data.length;i++) {
+                var id = data[i].id;
+                if(features[id] != undefined) {
+                    features[id].setStyle({color: '#FFFC00'});
                 }
             }
+            /*var f = features[type];
+            for(var i in f){
+                f[i].setStyle({color: '#FFFC00'});
+            }*/
+            
+        }
+        var typemap = {building:false, restaurant:false, school:false, fuel:false, townhall:false};
+        function query(type, check){
+            typemap[type] = check;
+        }
+        function light(type, check){
+            var tag = "";
+            for(var attr in typemap) {
+                if(typemap[attr]) {
+                    tag += attr + ',';
+                }
+            }
+            $.get("tagdata?tag=" + tag, pinTheMap, "json");
         }
     </script>
 </body>

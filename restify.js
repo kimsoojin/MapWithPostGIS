@@ -5,7 +5,7 @@ var restify     = require('restify'),
   var username = "postgres" // sandbox username
   var password = "gis" // read only privileges on our table
   var host = "localhost"
-  var database = "test" // database name
+  var database = "osm_daegu" // database name
   var conString = "postgres://"+username+":"+password+"@"+host+"/"+database; // Your Database Connection
 var table_name  = "road";
 pg.connectionParameters = conString;// + '/' +table_name;
@@ -17,7 +17,7 @@ app.use(restify.fullResponse())
 // Routes
 app.get('/roaddata', function (req, res, next){
   
-   pg('SELECT id, st_asgeojson(geom), \'road\' as type FROM public.road;', function(err, rows, result){   
+   pg('SELECT id, st_asgeojson(geom) FROM public.road_geom;', function(err, rows, result){   
   if(err) {
       res.send(500, {http_status:500,error_msg: err})
       return console.error('error running query', err);
@@ -28,7 +28,27 @@ app.get('/roaddata', function (req, res, next){
 });
 app.get('/buildingdata', function (req, res, next){
 
-   pg('select id, st_asgeojson(geom), \'building\' as type from public.building;', function(err, rows, result){   
+   pg('select id, st_asgeojson(geom) from public.building_geom;', function(err, rows, result){   
+  if(err) {
+      res.send(500, {http_status:500,error_msg: err})
+      return console.error('error running query', err);
+    }
+    res.send(rows);
+    return rows;
+  });
+});
+app.get('/tagdata', function (req, res, next){
+var query = req.query;
+var tag = query.tag.split(',');
+
+var sql = 'select id from public.building_geom where tag in (';
+var i = 0;
+for(i = 0;i < tag.length - 2;i++) {
+	sql += "\'" + tag[i] + "\',";
+}
+sql += "\'" + tag[i] + "\')";
+console.log(sql);
+  pg(sql + ';', function(err, rows, result){   
   if(err) {
       res.send(500, {http_status:500,error_msg: err})
       return console.error('error running query', err);
@@ -50,7 +70,7 @@ app.get('/parks/within', function (req, res, next){
     res.send(500, {http_status:400,error_msg: "this endpoint requires two pair of lat, long coordinates: lat1 lon1 lat2 lon2\na query 'limit' parameter can be optionally specified as well."});
     return console.error('could not connect to postgres', err);
   }
-  console.log('SELECT st_asgeojson(geom) FROM ' + table_name+ ' t WHERE ST_Intersects(st_transform(st_setsrid(ST_GeomFromText(\'POLYGON(('+query.lat1+ " " + query.lon1 +"," +query.lat2+" "+query.lon1+","+query.lat2+" "+query.lon2+","+query.lat1+" "+ query.lon2+","+query.lat1+" "+ query.lon1+"))'),4326),3857), st_setsrid(t.way,3857)) LIMIT "+limit+';');
+  console.log('SELECT id FROM (select id,geom from public.road_geom union select id,geom from public.building_geom) as u WHERE ST_Intersects(st_transform(st_setsrid(ST_GeomFromText(\'POLYGON(('+query.lat1+ " " + query.lon1 +"," +query.lat2+" "+query.lon1+","+query.lat2+" "+query.lon2+","+query.lat1+" "+ query.lon2+","+query.lat1+" "+ query.lon1+"))'),4326),3857), st_setsrid(u.geom,3857)) ;");
   //pg('SELECT st_astext(loc) FROM public.\"' + table_name+ '\" t WHERE ST_Intersects( ST_MakeEnvelope('+query.lon1+", "+query.lat1+", "+query.lon2+", "+query.lat2+", 4326), t.loc) LIMIT "+limit+';', function(err, rows, result){
   //pg('SELECT st_asgeojson(loc) FROM public.' + table_name + ';', function(err, rows, result){
    //pg('SELECT st_asgeojson(loc) FROM public.' + table_name+ ' t WHERE ST_Intersects( ST_MakeEnvelope('+query.lon1+", "+query.lat1+", "+query.lon2+", "+query.lat2+", 4326), t.loc) LIMIT "+limit+';', function(err, rows, result){
@@ -62,7 +82,7 @@ app.get('/parks/within', function (req, res, next){
    //pg('SELECT st_asgeojson(way) FROM public.' + table_name+ ' t WHERE ST_Intersects(ST_GeomFromText(\'POLYGON(('+query.lat1+ " " + query.lon1 +"," +query.lat2+" "+query.lon1+","+query.lat2+" "+query.lon2+","+query.lat1+" "+ query.lon2+","+query.lat1+" "+ query.lon1+"))'), t.loc) LIMIT "+limit+';', function(err, rows, result){   
    pg('SELECT st_asgeojson(way) FROM ' + table_name+ ' t WHERE ST_Intersects(st_transform(st_setsrid(ST_GeomFromText(\'POLYGON(('+query.lon1+ " " + query.lat1 +"," +query.lon2+" "+query.lat1+","+query.lon2+" "+query.lat2+","+query.lon1+" "+ query.lat2+","+query.lon1+" "+ query.lat1+"))'),4326),3857), st_setsrid(t.way,3857)) LIMIT "+limit+';', function(err, rows, result){   
  */
-   pg('SELECT id FROM (select id,geom from public.road union select id,geom from public.building) as u WHERE ST_Intersects(ST_GeomFromText(\'POLYGON(('+query.lat1+ " " + query.lon1 +"," +query.lat2+" "+query.lon1+","+query.lat2+" "+query.lon2+","+query.lat1+" "+ query.lon2+","+query.lat1+" "+ query.lon1+"))'), u.geom) ;", function(err, rows, result){   
+   pg('SELECT id FROM (select id,geom from public.road_geom union select id,geom from public.building_geom) as u WHERE ST_Intersects(st_transform(st_setsrid(ST_GeomFromText(\'POLYGON(('+query.lat1+ " " + query.lon1 +"," +query.lat2+" "+query.lon1+","+query.lat2+" "+query.lon2+","+query.lat1+" "+ query.lon2+","+query.lat1+" "+ query.lon1+"))'),4326),4326), st_setsrid(u.geom,4326)) ;", function(err, rows, result){   
   if(err) {
       res.send(500, {http_status:500,error_msg: err})
       return console.error('error running query', err);
