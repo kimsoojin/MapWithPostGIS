@@ -54,71 +54,81 @@ function road_parser() {}
     var way_list = result['osm']['way'];
     var building_map = {};
     var road_map = {};
+    var area_map = {};
 
-    for (var i = 0; i < node_list.length; i++) {
-      //console.log(util.inspect(node_list[i],false,null));
+/*
+for (var i = 0; i < node_list.length; i++) {
+  //console.log(util.inspect(node_list[i],false,null));
 
-      if (node_list[i].hasOwnProperty('tag')) {
-        var b_name;
-        var flag_accept = false;
-        var name_accept = false;
-        var b_type;
-        var node = node_list[i];
+  if (node_list[i].hasOwnProperty('tag')) {
+    var b_name;
+    var flag_accept = false;
+    var name_accept = false;
+    var b_type;
 
-        for (var j = 0; j < node_list[i]['tag'].length; j++) {
-          //console.log(util.inspect(node_list[i]['tag'][j]['$'], false, null));
+    var node = node_list[i];
 
-          if (node['tag'][j]['$']['k'] == 'name') {
-            b_name = node['tag'][j]['$']['v'];
-            name_accept = true;
-          } else if (node['tag'][j]['$']['k'] == 'amenity') {
-            b_type = node['tag'][j]['$']['v'];
-            flag_accept = true;
-          } else if (node['tag'][j]['$']['k'] == 'building') {
-            b_type = 'building';
-            flag_accept = true;
-          }
+    for (var j = 0; j < node_list[i]['tag'].length; j++) {
+      //console.log(util.inspect(node_list[i]['tag'][j]['$'], false, null));
+
+      if (node['tag'][j]['$']['k'] == 'name') {
+        b_name = node['tag'][j]['$']['v'];
+        name_accept = true;
+      } else if (node['tag'][j]['$']['k'] == 'amenity') {
+        b_type = node['tag'][j]['$']['v'];
+        if(b_type == 'yes'){
+          b_type = 'building';
         }
-        if (flag_accept == true && name_accept == true) {
-
-          if (building_map.hasOwnProperty(b_type)) {
-            var v = building_map[b_type];
-            building_map[b_type] = v + 1;
-          } else {
-            building_map[b_type] = 1;
-          }
-          var id = node['$']['id'];
-          var lat = node['$']['lat'];
-          var lon = node['$']['lon'];
-          if (b_name.length > 50) {
-            b_name = b_name.slice(0, 50);
-          }
-          var query_insert = "insert into building_geom (id, name, tag, geom) values (";
-          var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'POINT(' + lat + ' ' + lon + ')\',3857));';
-          //ins_st += ' select \''+id+'\' from buildings where not exists(select * from buildings where id = \''+id+'\')';
-          //console.log(ins_st);
-          var query = client.query(ins_st);
-          flag_accept = false;
-          name_accept = true;
-          count++;
-          query.on('error', function(error) {
-            console.log(error);
-            console.log(ins_st);
-            console.log(count);
-          });
-          query.on('row', (row) => {
-            results.push(row);
-
-          });
-
-        }
-
-
-
-
+        flag_accept = true;
+      } else if (node['tag'][j]['$']['k'] == 'building') {
+        b_type = 'building';
+        flag_accept = true;
       }
+       else if(node['tag'][j]['$']['k'] == 'shop'){
+         b_type = 'shop';
+         flag_accept = true;
+       }
+
+    }
+    if (flag_accept == true && name_accept == true) {
+
+      if (building_map.hasOwnProperty(b_type)) {
+        var v = building_map[b_type];
+        building_map[b_type] = v + 1;
+      } else {
+        building_map[b_type] = 1;
+      }
+      var id = node['$']['id'];
+      var lat = node['$']['lat'];
+      var lon = node['$']['lon'];
+      if (b_name.length > 50) {
+        b_name = b_name.slice(0, 50);
+      }
+      var query_insert = "insert into building_geom (id, name, tag, geom) values (";
+      var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'POINT(' + lat + ' ' + lon + ')\',3857));';
+      //ins_st += ' select \''+id+'\' from buildings where not exists(select * from buildings where id = \''+id+'\')';
+      //console.log(ins_st);
+      var query = client.query(ins_st);
+      flag_accept = false;
+      name_accept = true;
+      count++;
+      /*
+      query.on('error', function(error) {
+        console.log(error);
+        console.log(ins_st);
+        console.log(count);
+      });
+
+      query.on('row', (row) => {
+        results.push(row);
+
+      });
+
     }
 
+  }
+}
+*/
 
     for (var i = 0; i < way_list.length; i++) {
       if (way_list[i].hasOwnProperty('tag')) {
@@ -142,8 +152,12 @@ function road_parser() {}
 
         var b_name;
         var b_type;
+        var b_type_name;
         var flag_accept = false;
         var name_accept = false;
+        var road_accept = false;
+        var building_accept = false;
+        var area_accept = false;
         var node = way_list[i];
         for (var j = 0; j < way_list[i]['tag'].length; j++) {
           //console.log(util.inspect(node_list[i]['tag'][j]['$'], false, null));
@@ -152,17 +166,27 @@ function road_parser() {}
             b_name = node['tag'][j]['$']['v'];
             name_accept = true;
           } else if (node['tag'][j]['$']['k'] == 'highway') {
-            b_type = 'highway';
+            b_type = node['tag'][j]['$']['v'];
+            if(b_type == 'yes'){
+              b_type = 'highway';
+            }
+            road_accept = true;
             flag_accept = true;
           } else if (node['tag'][j]['$']['k'] == 'building') {
-            b_type = 'building';
+            b_type = node['tag'][j]['$']['v'];
+            if(b_type == 'yes'){
+              b_type = 'building';
+            }
             flag_accept = true;
+            building_accept = true;
           } else if (node['tag'][j]['$']['k'] == 'waterway') {
             b_type = 'water';
             flag_accept = true;
+            area_accept = true;
           } else if (node['tag'][j]['$']['k'] == 'golf') {
             b_type = 'golf';
             flag_accept = true;
+            area_accept = true;
           }
           /*
           else if (node['tag'][j]['$']['k'] == 'building') {
@@ -171,7 +195,7 @@ function road_parser() {}
           }
           */
         }
-        if (flag_accept == true && name_accept == true && b_type == 'highway') {
+        if (flag_accept == true && name_accept == true && road_accept == true && building_accept == false) {
           if (road_map.hasOwnProperty(b_type)) {
             var v = road_map[b_type];
             road_map[b_type] = v + 1;
@@ -201,30 +225,33 @@ function road_parser() {}
           var query = client.query(ins_st);
 
           count++;
-          query.on('error', function(error) {
-            console.log(error);
-            console.log(ins_st);
 
-          });
           query.on('row', (row) => {
             results.push(row);
 
           });
 
-        } else if (name_accept == true && flag_accept == true && b_type != 'highway') {
-          if (building_map.hasOwnProperty(b_type)) {
-            var v = building_map[b_type];
-            building_map[b_type] = v + 1;
+        } else if (name_accept == true && flag_accept == true && road_accept == false && building_accept == true) {
+          if (area_map.hasOwnProperty(b_type)) {
+            var v = area_map[b_type];
+            area_map[b_type] = v + 1;
           } else {
-            building_map[b_type] = 1;
+            area_map[b_type] = 1;
           }
+
           var id = node['$']['id'];
           var lat = node['$']['lat'];
           var lon = node['$']['lon'];
           if (b_name.length > 50) {
             b_name = b_name.slice(0, 50);
           }
-          if(b_type == "building"){
+
+            if (building_map.hasOwnProperty(b_type)) {
+              var v = building_map[b_type];
+              building_map[b_type] = v + 1;
+            } else {
+              building_map[b_type] = 1;
+            }
             var query_insert = "insert into building_geom (id, name, tag, geom) values (";
             //이 부분 반복문으로 고쳐야 됨. lat_list랑 lon_list 써서 linestring만들것
             var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'POLYGON((';
@@ -239,11 +266,29 @@ function road_parser() {}
             //  ins_st += ' select \''+id+'\' from roads where not exists(select * from roads where id = \''+id+'\')';
             //console.log(ins_st);
             var query = client.query(ins_st);
-          }
-          else{
+
+
+          count++;
+          /*
+          query.on('error', function(error) {
+            console.log(error);
+            console.log(ins_st);
+
+          });
+          query.on('row', (row) => {
+            results.push(row);
+
+          });
+          */
+
+        }
+        else if(name_accept == false && flag_accept == true && road_accept !== true && building_accept !==true && area_accept == true){
+          if(ref_lat_list[0] == ref_lat_list[ref_lat_list.length-1] && ref_lon_list[0] == ref_lon_list[ref_lon_list.length-1]){
             var query_insert = "insert into area_geom (id, name, tag, geom) values (";
             //이 부분 반복문으로 고쳐야 됨. lat_list랑 lon_list 써서 linestring만들것
             var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'POLYGON((';
+
+
             for (var k = 0; k < ref_lat_list.length; k++) {
               ins_st = ins_st + ref_lat_list[k];
               ins_st = ins_st + ' ';
@@ -256,17 +301,24 @@ function road_parser() {}
             //console.log(ins_st);
             var query = client.query(ins_st);
           }
+          else{
+            var query_insert = "insert into road_geom (id, name, tag, geom) values (";
+            //이 부분 반복문으로 고쳐야 됨. lat_list랑 lon_list 써서 linestring만들것
+            var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'LINESTRING(';
 
-          count++;
-          query.on('error', function(error) {
-            console.log(error);
-            console.log(ins_st);
 
-          });
-          query.on('row', (row) => {
-            results.push(row);
-
-          });
+            for (var k = 0; k < ref_lat_list.length; k++) {
+              ins_st = ins_st + ref_lat_list[k];
+              ins_st = ins_st + ' ';
+              ins_st = ins_st + ref_lon_list[k];
+              ins_st = ins_st + ',';
+            }
+            ins_st = ins_st.slice(0, ins_st.length - 1);
+            ins_st += ')\',3857));';
+            //  ins_st += ' select \''+id+'\' from roads where not exists(select * from roads where id = \''+id+'\')';
+            //console.log(ins_st);
+            var query = client.query(ins_st);
+          }
 
         }
       }
@@ -276,6 +328,7 @@ function road_parser() {}
     }
     console.log(JSON.stringify(building_map));
     console.log(JSON.stringify(road_map));
+    console.log(JSON.stringify(area_map));
   });
 
 })();
