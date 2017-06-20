@@ -7,9 +7,9 @@ var parser = new xml2js.Parser();
 var fs = require('fs');
 var pg = require('pg-query')
 var username = "postgres" // sandbox username
-var password = "gis" // read only privileges on our table
+var password = "1234" // read only privileges on our table
 var host = "localhost"
-var database = "osm_daegu" // database name
+var database = "postgres" // database name
 var conString = "postgres://" + username + ":" + password + "@" + host + "/" + database; // Your Database Connection
 var table_name = "public.buildings";
 var count = 0;
@@ -37,9 +37,9 @@ function road_parser() {}
   //client.query("create table line_geom (id int NOT NULL, name char(50), tag char(50),geom geometry('LINESTRING',3857))");
   //client.query("create table polygon_geom (id int NOT NULL, name char(50), tag char(50),geom geometry('POLYGON',3857))");
   //client.query("create table geom_all (id int, name char(50),tag char(50), geom geometry);");
-  client.query("create table building_geom (id int, name char(50),tag char(50), geom geometry);");
-  client.query("create table road_geom (id int, name char(50),tag char(50), geom geometry);");
-  client.query("create table area_geom (id int, name char(50),tag char(50), geom geometry);");
+  client.query("create table building_geom (id int, name char(50),tag char(50), geom geometry,primary key(id));");
+  client.query("create table road_geom (id int, name char(50),tag char(50), geom geometry,primary key(id));");
+  //client.query("create table area_geom (id int, name char(50),tag char(50), geom geometry,primary key(id));");
   //var query_insert = "insert into geoms (id, name, tag, geom) values (";
   //var q_st_building = 'insert into buildings (id, name,building,position) values(';
   //var q_st_road = 'insert into roads (id, name, road,positions) values(';
@@ -159,6 +159,7 @@ for (var i = 0; i < node_list.length; i++) {
         var building_accept = false;
         var area_accept = false;
         var node = way_list[i];
+        var type_flag = false;
         for (var j = 0; j < way_list[i]['tag'].length; j++) {
           //console.log(util.inspect(node_list[i]['tag'][j]['$'], false, null));
 
@@ -171,21 +172,28 @@ for (var i = 0; i < node_list.length; i++) {
               b_type = 'highway';
             }
             road_accept = true;
-            flag_accept = true;
+            type_flag = true;
           } else if (node['tag'][j]['$']['k'] == 'building') {
             b_type = node['tag'][j]['$']['v'];
             if(b_type == 'yes'){
               b_type = 'building';
             }
-            flag_accept = true;
+            type_flag = true;
             building_accept = true;
           } else if (node['tag'][j]['$']['k'] == 'waterway') {
-            b_type = 'water';
-            flag_accept = true;
+            b_type = node['tag'][j]['$']['v'];
+            if(b_type == 'yes'){
+              b_type = 'waterway';
+            }
+            type_flag = true;
             area_accept = true;
           } else if (node['tag'][j]['$']['k'] == 'golf') {
             b_type = 'golf';
-            flag_accept = true;
+            type_flag = true;
+            area_accept = true;
+          }else if(node['tag'][j]['$']['k'] == 'leisure' || node['tag'][j]['$']['k'] == 'area' || node['tag'][j]['$']['k'] == 'landuse'){
+            b_type = node['tag'][j]['$']['v'];
+            type_flag = true;
             area_accept = true;
           }
           /*
@@ -194,8 +202,12 @@ for (var i = 0; i < node_list.length; i++) {
             flag_accept = true;
           }
           */
+
+          if(type_flag == true && name_accept == true){
+            break;
+          }
         }
-        if (flag_accept == true && name_accept == true && road_accept == true && building_accept == false) {
+        if (name_accept == true && road_accept == true && building_accept == false && area_accept == false) {
           if (road_map.hasOwnProperty(b_type)) {
             var v = road_map[b_type];
             road_map[b_type] = v + 1;
@@ -219,6 +231,7 @@ for (var i = 0; i < node_list.length; i++) {
           }
           ins_st = ins_st.slice(0, ins_st.length - 1);
           ins_st += ')\',3857));';
+          //ins_st += 'ON DUPLICATE KEY UPDATE;'
           //  ins_st += ' select \''+id+'\' from roads where not exists(select * from roads where id = \''+id+'\')';
           //console.log(ins_st);
 
@@ -231,12 +244,12 @@ for (var i = 0; i < node_list.length; i++) {
 
           });
 
-        } else if (name_accept == true && flag_accept == true && road_accept == false && building_accept == true) {
-          if (area_map.hasOwnProperty(b_type)) {
-            var v = area_map[b_type];
-            area_map[b_type] = v + 1;
+        } else if (name_accept == true && road_accept == false && building_accept == true && area_accept == false) {
+          if (building_map.hasOwnProperty(b_type)) {
+            var v = building_map[b_type];
+            building_map[b_type] = v + 1;
           } else {
-            area_map[b_type] = 1;
+            building_map[b_type] = 1;
           }
 
           var id = node['$']['id'];
@@ -246,12 +259,7 @@ for (var i = 0; i < node_list.length; i++) {
             b_name = b_name.slice(0, 50);
           }
 
-            if (building_map.hasOwnProperty(b_type)) {
-              var v = building_map[b_type];
-              building_map[b_type] = v + 1;
-            } else {
-              building_map[b_type] = 1;
-            }
+
             var query_insert = "insert into building_geom (id, name, tag, geom) values (";
             //이 부분 반복문으로 고쳐야 됨. lat_list랑 lon_list 써서 linestring만들것
             var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'POLYGON((';
@@ -263,27 +271,35 @@ for (var i = 0; i < node_list.length; i++) {
             }
             ins_st = ins_st.slice(0, ins_st.length - 1);
             ins_st += '))\',3857));';
+            //ins_st += 'ON DUPLICATE KEY UPDATE'
             //  ins_st += ' select \''+id+'\' from roads where not exists(select * from roads where id = \''+id+'\')';
             //console.log(ins_st);
             var query = client.query(ins_st);
 
 
           count++;
-          /*
+
           query.on('error', function(error) {
-            console.log(error);
-            console.log(ins_st);
+            //console.log(error);
+            //console.log(ins_st);
 
           });
           query.on('row', (row) => {
             results.push(row);
 
           });
-          */
+
 
         }
-        else if(name_accept == false && flag_accept == true && road_accept !== true && building_accept !==true && area_accept == true){
+        /*
+        else if( road_accept == false && building_accept ==false && area_accept == true){
           if(ref_lat_list[0] == ref_lat_list[ref_lat_list.length-1] && ref_lon_list[0] == ref_lon_list[ref_lon_list.length-1]){
+            if (area_map.hasOwnProperty(b_type)) {
+              var v = area_map[b_type];
+              area_map[b_type] = v + 1;
+            } else {
+              area_map[b_type] = 1;
+            }
             var query_insert = "insert into area_geom (id, name, tag, geom) values (";
             //이 부분 반복문으로 고쳐야 됨. lat_list랑 lon_list 써서 linestring만들것
             var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'POLYGON((';
@@ -297,11 +313,19 @@ for (var i = 0; i < node_list.length; i++) {
             }
             ins_st = ins_st.slice(0, ins_st.length - 1);
             ins_st += '))\',3857));';
+            //ins_st += 'ON DUPLICATE KEY UPDATE;'
             //  ins_st += ' select \''+id+'\' from roads where not exists(select * from roads where id = \''+id+'\')';
             //console.log(ins_st);
             var query = client.query(ins_st);
           }
+          /*
           else{
+            if (road_map.hasOwnProperty(b_type)) {
+              var v = road_map[b_type];
+              road_map[b_type] = v + 1;
+            } else {
+              road_map[b_type] = 1;
+            }
             var query_insert = "insert into road_geom (id, name, tag, geom) values (";
             //이 부분 반복문으로 고쳐야 됨. lat_list랑 lon_list 써서 linestring만들것
             var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'LINESTRING(';
@@ -319,13 +343,15 @@ for (var i = 0; i < node_list.length; i++) {
             //console.log(ins_st);
             var query = client.query(ins_st);
           }
+          */
 
         }
+
       }
 
 
 
-    }
+
     console.log(JSON.stringify(building_map));
     console.log(JSON.stringify(road_map));
     console.log(JSON.stringify(area_map));
