@@ -39,7 +39,7 @@ function road_parser() {}
   //client.query("create table geom_all (id int, name char(50),tag char(50), geom geometry);");
   client.query("create table building_geom (id int, name char(50),tag char(50), geom geometry,primary key(id));");
   client.query("create table road_geom (id int, name char(50),tag char(50), geom geometry,primary key(id));");
-  //client.query("create table area_geom (id int, name char(50),tag char(50), geom geometry,primary key(id));");
+  client.query("create table area_geom (id int, name char(50),tag char(50), geom geometry,primary key(id));");
   //var query_insert = "insert into geoms (id, name, tag, geom) values (";
   //var q_st_building = 'insert into buildings (id, name,building,position) values(';
   //var q_st_road = 'insert into roads (id, name, road,positions) values(';
@@ -160,8 +160,22 @@ for (var i = 0; i < node_list.length; i++) {
         var area_accept = false;
         var node = way_list[i];
         var type_flag = false;
+
+        var polygon_flag = false;
+        var line_flag = false;
+
+        if(ref_lat_list[0] == ref_lat_list[ref_lat_list.length-1] && ref_lon_list[0] == ref_lon_list[ref_lon_list.length-1]){
+          if(ref_lat_list.length != 1){
+            polygon_flag = true;
+          }
+        }
+        else{
+          line_flag = true;
+        }
+
         for (var j = 0; j < way_list[i]['tag'].length; j++) {
           //console.log(util.inspect(node_list[i]['tag'][j]['$'], false, null));
+
 
           if (node['tag'][j]['$']['k'] == 'name') {
             b_name = node['tag'][j]['$']['v'];
@@ -186,12 +200,9 @@ for (var i = 0; i < node_list.length; i++) {
               b_type = 'waterway';
             }
             type_flag = true;
-            area_accept = true;
-          } else if (node['tag'][j]['$']['k'] == 'golf') {
-            b_type = 'golf';
-            type_flag = true;
-            area_accept = true;
-          }else if(node['tag'][j]['$']['k'] == 'leisure' || node['tag'][j]['$']['k'] == 'area' || node['tag'][j]['$']['k'] == 'landuse'){
+            road_accept = true;
+          }
+          else if(node['tag'][j]['$']['k'] == 'golf' || node['tag'][j]['$']['k'] == 'leisure' || node['tag'][j]['$']['k'] == 'area' || node['tag'][j]['$']['k'] == 'landuse'){
             b_type = node['tag'][j]['$']['v'];
             type_flag = true;
             area_accept = true;
@@ -207,7 +218,7 @@ for (var i = 0; i < node_list.length; i++) {
             break;
           }
         }
-        if (name_accept == true && road_accept == true && building_accept == false && area_accept == false) {
+        if (name_accept == true && road_accept == true && building_accept == false && area_accept == false && line_flag == true) {
           if (road_map.hasOwnProperty(b_type)) {
             var v = road_map[b_type];
             road_map[b_type] = v + 1;
@@ -244,7 +255,7 @@ for (var i = 0; i < node_list.length; i++) {
 
           });
 
-        } else if (name_accept == true && road_accept == false && building_accept == true && area_accept == false) {
+        } else if (name_accept == true && road_accept == false && building_accept == true && area_accept == false && polygon_flag == true) {
           if (building_map.hasOwnProperty(b_type)) {
             var v = building_map[b_type];
             building_map[b_type] = v + 1;
@@ -291,16 +302,16 @@ for (var i = 0; i < node_list.length; i++) {
 
 
         }
-        /*
-        else if( road_accept == false && building_accept ==false && area_accept == true){
+
+        else if( road_accept == false && building_accept ==false && area_accept == true && polygon_flag == true){
           if(ref_lat_list[0] == ref_lat_list[ref_lat_list.length-1] && ref_lon_list[0] == ref_lon_list[ref_lon_list.length-1]){
-            if (area_map.hasOwnProperty(b_type)) {
-              var v = area_map[b_type];
-              area_map[b_type] = v + 1;
+            if (building_map.hasOwnProperty(b_type)) {
+              var v = building_map[b_type];
+              building_map[b_type] = v + 1;
             } else {
-              area_map[b_type] = 1;
+              building_map[b_type] = 1;
             }
-            var query_insert = "insert into area_geom (id, name, tag, geom) values (";
+            var query_insert = "insert into building_geom (id, name, tag, geom) values (";
             //이 부분 반복문으로 고쳐야 됨. lat_list랑 lon_list 써서 linestring만들것
             var ins_st = query_insert + id + ',\'' + b_name + '\',\'' + b_type + '\',ST_GeomFromText(\'POLYGON((';
 
@@ -352,9 +363,11 @@ for (var i = 0; i < node_list.length; i++) {
 
 
 
-    console.log(JSON.stringify(building_map));
-    console.log(JSON.stringify(road_map));
-    console.log(JSON.stringify(area_map));
+
+  }
+  console.log(JSON.stringify(building_map));
+  console.log(JSON.stringify(road_map));
+  console.log(JSON.stringify(area_map));
   });
 
 })();
